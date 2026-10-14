@@ -6,7 +6,8 @@
 
     <application
         android:allowBackup="true"
-        android:label="Port Connect"
+        android:label="PortConnect"
+        android:usesCleartextTraffic="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.PortConnect">
         <activity

@@ -1,105 +1,84 @@
 package com.example.portconnect
 
+import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
+import androidx.compose.ui.viewinterop.AndroidView
 
 // ---------- Model ----------
-
-enum class Status { IDLE, CONNECTING, CONNECTED, FAILED }
 
 data class Target(
     val name: String,
     val host: String,
     val port: Int,
-    val status: Status = Status.IDLE,
-    val detail: String = "Not connected",
-)
-
-// ---------- ViewModel ----------
-
-class MainViewModel : ViewModel() {
-    var targets by mutableStateOf(
-        listOf(
-            Target("Server A", "192.168.100.4", 1453),
-            Target("Server B", "192.168.100.4", 34177),
-            Target("Server C", "192.168.100.4", 8084),
-        )
-    )
-        private set
-
-    private fun update(index: Int, transform: (Target) -> Target) {
-        targets = targets.mapIndexed { i, t -> if (i == index) transform(t) else t }
-    }
-
-    fun connect(index: Int) {
-        val t = targets[index]
-        if (t.status == Status.CONNECTING) return
-        viewModelScope.launch { doConnect(index) }
-    }
-
-    fun connectAll() {
-        viewModelScope.launch {
-            targets.indices.map { async { doConnect(it) } }.awaitAll()
-        }
-    }
-
-    private suspend fun doConnect(index: Int) {
-        val t = targets[index]
-        update(index) { it.copy(status = Status.CONNECTING, detail = "Connecting…") }
-        val start = System.currentTimeMillis()
-        val result = withContext(Dispatchers.IO) {
-            try {
-                Socket().use { it.connect(InetSocketAddress(t.host, t.port), 4000) }
-                Result.success(System.currentTimeMillis() - start)
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
-        }
-        update(index) {
-            result.fold(
-                onSuccess = { ms -> it.copy(status = Status.CONNECTED, detail = "Connected · ${ms} ms") },
-                onFailure = { e ->
-                    it.copy(
-                        status = Status.FAILED,
-                        detail = e.message?.take(60) ?: e.javaClass.simpleName
-                    )
-                }
-            )
-        }
-    }
+    val icon: ImageVector,
+) {
+    val url: String get() = "http://$host:$port"
 }
+
+private val targets = listOf(
+    Target("Blackbox Store", "192.168.100.4", 1453, Icons.Filled.Storefront),
+    Target("Orbit Store", "192.168.100.4", 34177, Icons.Filled.Public),
+    Target("Payload Manager", "192.168.100.4", 8084, Icons.Filled.Inventory2),
+)
 
 // ---------- Activity ----------
 
@@ -107,7 +86,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { PortConnectTheme { PortConnectScreen() } }
+        setContent { PortConnectTheme { PortConnectApp() } }
     }
 }
 
@@ -116,10 +95,8 @@ class MainActivity : ComponentActivity() {
 private val Bg = Color(0xFF0F1115)
 private val CardBg = Color(0xFF181B22)
 private val Accent = Color(0xFF6C8CFF)
-private val Good = Color(0xFF3DDC97)
-private val Bad = Color(0xFFFF6B6B)
-private val Warn = Color(0xFFFFC857)
 private val Muted = Color(0xFF8A93A6)
+private val Bad = Color(0xFFFF6B6B)
 
 @Composable
 fun PortConnectTheme(content: @Composable () -> Unit) {
@@ -138,103 +115,195 @@ fun PortConnectTheme(content: @Composable () -> Unit) {
 // ---------- UI ----------
 
 @Composable
-fun PortConnectScreen(vm: MainViewModel = viewModel()) {
+fun PortConnectApp() {
+    var selected by rememberSaveable { mutableStateOf<Int?>(null) }
+
     Surface(color = Bg, modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .systemBarsPadding()
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(Modifier.height(24.dp))
-            Text("Port Connect", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Text("Tap a card's button to test its connection", color = Muted, fontSize = 14.sp)
-            Spacer(Modifier.height(24.dp))
-
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                items(vm.targets.size) { i ->
-                    TargetCard(vm.targets[i]) { vm.connect(i) }
-                }
-            }
-
-            Button(
-                onClick = { vm.connectAll() },
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Icon(Icons.Filled.Bolt, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Connect all", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(Modifier.height(16.dp))
+        val index = selected
+        if (index == null) {
+            HomeScreen(onOpen = { selected = it })
+        } else {
+            WebScreen(target = targets[index], onClose = { selected = null })
         }
     }
 }
 
 @Composable
-fun TargetCard(target: Target, onConnect: () -> Unit) {
-    val dot by animateColorAsState(
-        when (target.status) {
-            Status.IDLE -> Muted
-            Status.CONNECTING -> Warn
-            Status.CONNECTED -> Good
-            Status.FAILED -> Bad
-        },
-        label = "dot"
-    )
+fun HomeScreen(onOpen: (Int) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(horizontal = 20.dp)
+    ) {
+        Spacer(Modifier.height(24.dp))
+        Text("PortConnect", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(4.dp))
+        Text("Tap a service to open it", color = Muted, fontSize = 14.sp)
+        Spacer(Modifier.height(24.dp))
 
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            items(targets.size) { i ->
+                TargetCard(targets[i]) { onOpen(i) }
+            }
+        }
+    }
+}
+
+@Composable
+fun TargetCard(target: Target, onClick: () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBg),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(dot)
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(target.name, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-            }
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "${target.host}:${target.port}",
-                fontFamily = FontFamily.Monospace,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(target.detail, color = dot, fontSize = 13.sp)
-            Spacer(Modifier.height(14.dp))
-
-            val busy = target.status == Status.CONNECTING
-            Button(
-                onClick = onConnect,
-                enabled = !busy,
-                shape = RoundedCornerShape(14.dp),
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(Accent.copy(alpha = 0.16f)),
+                contentAlignment = Alignment.Center
             ) {
-                if (busy) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = Color.White
+                Icon(target.icon, contentDescription = null, tint = Accent)
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(target.name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "${target.host}:${target.port}",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    color = Muted
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Muted)
+        }
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun WebScreen(target: Target, onClose: () -> Unit) {
+    var webView by remember { mutableStateOf<WebView?>(null) }
+    var progress by remember { mutableStateOf(0) }
+    var failed by remember { mutableStateOf(false) }
+
+    BackHandler {
+        val wv = webView
+        if (wv != null && wv.canGoBack()) wv.goBack() else onClose()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(
+                target.name,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = {
+                failed = false
+                webView?.reload()
+            }) {
+                Icon(Icons.Filled.Refresh, contentDescription = "Reload")
+            }
+        }
+
+        if (progress in 1..99) {
+            LinearProgressIndicator(
+                progress = { progress / 100f },
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            Spacer(Modifier.height(4.dp))
+        }
+
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        settings.javaScriptEnabled = true
+                        settings.domStorageEnabled = true
+                        settings.useWideViewPort = true
+                        settings.loadWithOverviewMode = true
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageStarted(
+                                view: WebView?, url: String?, favicon: Bitmap?
+                            ) {
+                                failed = false
+                            }
+
+                            override fun onReceivedError(
+                                view: WebView,
+                                request: WebResourceRequest,
+                                error: WebResourceError
+                            ) {
+                                if (request.isForMainFrame) failed = true
+                            }
+                        }
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onProgressChanged(view: WebView?, newProgress: Int) {
+                                progress = newProgress
+                            }
+                        }
+                        loadUrl(target.url)
+                        webView = this
+                    }
+                },
+                onRelease = { it.destroy() }
+            )
+
+            if (failed) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Bg)
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Can't open this page", fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        target.url,
+                        fontFamily = FontFamily.Monospace,
+                        color = Bad,
+                        fontSize = 14.sp
                     )
-                } else {
-                    Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(if (target.status == Status.IDLE) "Connect" else "Reconnect")
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Check that you're on the same Wi-Fi and the server is running.",
+                        color = Muted,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Button(onClick = {
+                        failed = false
+                        webView?.loadUrl(target.url)
+                    }) {
+                        Text("Try again")
+                    }
                 }
             }
         }
