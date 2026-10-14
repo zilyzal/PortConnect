@@ -6,6 +6,8 @@
 
     <application
         android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="PortConnect"
         android:usesCleartextTraffic="true"
         android:supportsRtl="true"
