@@ -7,30 +7,19 @@
     <group
         android:pivotX="54"
         android:pivotY="54"
-        android:scaleX="0.88"
-        android:scaleY="0.88"
-        android:translateX="-2.95">
-        <!-- Open ring: the port -->
+        android:scaleX="0.84"
+        android:scaleY="0.84">
+        <!-- The P: stem and open bowl -->
         <path
             android:fillColor="#00000000"
-            android:pathData="M77.12,64.29 A25.31,25.31 0 1,1 77.12,43.71"
+            android:pathData="M38.18,82.69 V25.31 H53.79 A16.03,16.03 0 0 1 53.79,57.38 H38.18"
             android:strokeColor="#5B86FF"
             android:strokeLineCap="round"
-            android:strokeWidth="7.6" />
-        <!-- Connection line from the centre to the opening -->
-        <path
-            android:fillColor="#00000000"
-            android:pathData="M54,54 L81,54"
-            android:strokeColor="#EAF0FF"
-            android:strokeLineCap="round"
-            android:strokeWidth="3.8" />
-        <!-- Centre node -->
-        <path
-            android:fillColor="#EAF0FF"
-            android:pathData="M48.52,54 a5.48,5.48 0 1,0 10.96,0 a5.48,5.48 0 1,0 -10.96,0" />
-        <!-- Plug at the opening -->
+            android:strokeLineJoin="round"
+            android:strokeWidth="10.13" />
+        <!-- The plug inside the bowl -->
         <path
             android:fillColor="#FFC65C"
-            android:pathData="M76.36,54 a6.33,6.33 0 1,0 12.66,0 a6.33,6.33 0 1,0 -12.66,0" />
+            android:pathData="M48.31,41.34 a5.48,5.48 0 1,0 10.96,0 a5.48,5.48 0 1,0 -10.96,0" />
     </group>
 </vector>
