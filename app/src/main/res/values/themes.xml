@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.PortConnect" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#0C1226</item>
-        <item name="android:navigationBarColor">#0C1226</item>
-        <item name="android:windowBackground">#0C1226</item>
+        <item name="android:statusBarColor">#070B1A</item>
+        <item name="android:navigationBarColor">#070B1A</item>
+        <item name="android:windowBackground">#070B1A</item>
     </style>
 </resources>

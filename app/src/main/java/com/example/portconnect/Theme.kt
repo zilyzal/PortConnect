@@ -5,11 +5,11 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-internal val Ground = Color(0xFF0C1226)
+internal val Ground = Color(0xFF070B1A)
 internal val Panel = Color(0xFF141C3A)
 internal val Line = Color(0xFF26315A)
-internal val Ink = Color(0xFFEAF0FF)
-internal val Dim = Color(0xFF8C97BC)
+internal val Ink = Color(0xFFEEF3FF)
+internal val Dim = Color(0xBDE8EEFF)
 internal val Accent = Color(0xFF5B86FF)
 internal val Bad = Color(0xFFFF8A8A)
 

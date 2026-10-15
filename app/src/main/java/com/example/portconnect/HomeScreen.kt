@@ -13,12 +13,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -38,8 +41,19 @@ import kotlinx.coroutines.launch
 /** How far (as a share of the tile width) a tile must be swiped left before it is deleted. */
 private const val DELETE_SWIPE_FRACTION = 0.45f
 
-private val FieldHeight = 48.dp
-private val PanelShape = RoundedCornerShape(24.dp)
+private val DeleteRed = Color(0xFFFF6060)
+
+/** Red glass that only shows on the right, behind a tile that is being swiped left. */
+private val DeleteFill = Brush.horizontalGradient(
+    0f to Color.Transparent,
+    0.58f to Color.Transparent,
+    0.74f to DeleteRed.copy(alpha = 0.60f),
+    1f to DeleteRed.copy(alpha = 0.42f),
+)
+
+private val FieldFill = Color(0xFF040714).copy(alpha = 0.34f)
+private val FieldEdge = Color.White.copy(alpha = 0.14f)
+private val FieldHint = Color.White.copy(alpha = 0.38f)
 
 @Composable
 fun HomeScreen(
@@ -51,41 +65,48 @@ fun HomeScreen(
     onAdd: (String, Int) -> Unit,
     onRestore: () -> Unit,
 ) {
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding()
-            .imePadding(),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .background(Ground)
+            .wallpaper()
     ) {
-        item { AddressPanel(host = host, onSave = onSaveHost) }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item { AddressPanel(host = host, onSave = onSaveHost) }
 
-        item {
-            Column(modifier = Modifier.padding(start = 4.dp, top = 6.dp)) {
-                Text("Services", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                if (services.isNotEmpty()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text("Swipe a service to the left to delete it.", color = Dim, fontSize = 13.sp)
+            item {
+                Column(modifier = Modifier.padding(start = 4.dp, top = 6.dp)) {
+                    Text("Services", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    if (services.isNotEmpty()) {
+                        Spacer(Modifier.height(2.dp))
+                        Text("Swipe a service to the left to delete it.", color = Dim, fontSize = 13.sp)
+                    }
                 }
             }
-        }
 
-        if (services.isEmpty()) {
-            item { EmptyState(onRestore = onRestore) }
-        }
+            if (services.isEmpty()) {
+                item { EmptyState(onRestore = onRestore) }
+            }
 
-        items(services, key = { it.id }) { service ->
-            SwipeRow(
-                service = service,
-                host = host,
-                onOpen = { onOpen(service) },
-                onDelete = { onDelete(service) },
-                modifier = Modifier.animateItem()
-            )
-        }
+            items(services, key = { it.id }) { service ->
+                SwipeRow(
+                    service = service,
+                    host = host,
+                    onOpen = { onOpen(service) },
+                    onDelete = { onDelete(service) },
+                    modifier = Modifier.animateItem()
+                )
+            }
 
-        item { AddBar(onAdd = onAdd) }
+            item { AddBar(onAdd = onAdd) }
+        }
     }
 }
 
@@ -101,13 +122,7 @@ private fun EmptyState(onRestore: () -> Unit) {
         Spacer(Modifier.height(4.dp))
         Text("Add one below, or bring back the originals.", color = Dim, fontSize = 14.sp)
         Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onRestore,
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = Ground)
-        ) {
-            Text("Restore defaults", fontWeight = FontWeight.SemiBold)
-        }
+        GlassButton(text = "Restore defaults", onClick = onRestore)
     }
 }
 
@@ -126,9 +141,7 @@ private fun AddressPanel(host: String, onSave: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(PanelShape)
-            .background(Panel)
-            .border(1.dp, Line, PanelShape)
+            .glassPanel()
             .padding(16.dp)
     ) {
         Text("Device address", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -148,27 +161,15 @@ private fun AddressPanel(host: String, onSave: (String) -> Unit) {
                 mono = true,
                 isError = !valid
             )
-            Button(
+            GlassButton(
+                text = "Save",
                 onClick = { normalized?.let(onSave) },
-                enabled = changed,
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Accent,
-                    contentColor = Ground,
-                    disabledContainerColor = Line,
-                    disabledContentColor = Dim
-                ),
-                modifier = Modifier.height(FieldHeight)
-            ) {
-                Text("Save", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
+                enabled = changed
+            )
         }
 
-        Spacer(Modifier.height(8.dp))
-        if (valid) {
-            Text("Default is $DEFAULT_HOST", color = Dim, fontSize = 13.sp)
-        } else {
+        if (!valid) {
+            Spacer(Modifier.height(8.dp))
             Text("Enter an address like 192.168.1.20.", color = Bad, fontSize = 13.sp)
         }
     }
@@ -194,11 +195,11 @@ private fun SwipeRow(
                 modifier = Modifier
                     .matchParentSize()
                     .clip(RoundedCornerShape(22.dp))
-                    .background(Bad.copy(alpha = 0.9f))
+                    .background(DeleteFill)
                     .padding(horizontal = 24.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Text("Delete", color = Ground, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Delete", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -240,16 +241,26 @@ private fun SwipeRow(
 private fun ServiceTile(service: Service, host: String, onClick: () -> Unit) {
     val shape = RoundedCornerShape(22.dp)
     val accent = service.accent
-    val tint = remember(accent) { lerp(Panel, accent, 0.13f) }
+    val fill = remember(accent) {
+        Brush.linearGradient(0f to accent.copy(alpha = 0.36f), 1f to accent.copy(alpha = 0.08f))
+    }
+    val edge = remember(accent) {
+        Brush.linearGradient(0f to Color.White.copy(alpha = 0.45f), 1f to accent.copy(alpha = 0.35f))
+    }
+    val portColor = remember(accent) { lerp(accent, Color.White, 0.18f) }
+    val glow = remember(accent) {
+        TextStyle(shadow = Shadow(color = accent.copy(alpha = 0.55f), blurRadius = 28f))
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(tint)
-            .border(1.dp, accent.copy(alpha = 0.30f), shape)
+            .background(fill)
+            .background(Sheen)
+            .border(1.dp, edge, shape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 22.dp),
+            .padding(horizontal = 20.dp, vertical = 21.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -274,10 +285,11 @@ private fun ServiceTile(service: Service, host: String, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text(
             service.port.toString(),
-            color = accent,
+            color = portColor,
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            style = glow
         )
     }
 }
@@ -306,9 +318,7 @@ private fun AddBar(onAdd: (String, Int) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(PanelShape)
-            .background(Panel)
-            .border(1.dp, Line, PanelShape)
+            .glassPanel()
             .padding(16.dp)
     ) {
         Text("Add a service", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -336,21 +346,7 @@ private fun AddBar(onAdd: (String, Int) -> Unit) {
                 mono = true,
                 isError = port.isNotEmpty() && !portValid
             )
-            Button(
-                onClick = { submit() },
-                enabled = canAdd,
-                shape = RoundedCornerShape(14.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Accent,
-                    contentColor = Ground,
-                    disabledContainerColor = Line,
-                    disabledContentColor = Dim
-                ),
-                modifier = Modifier.height(FieldHeight)
-            ) {
-                Text("Add", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-            }
+            GlassButton(text = "Add", onClick = { submit() }, enabled = canAdd)
         }
 
         if (port.isNotEmpty() && !portValid) {
@@ -381,26 +377,20 @@ private fun FieldBox(
         modifier = modifier
             .height(FieldHeight)
             .clip(shape)
-            .background(Ground)
-            .border(1.dp, if (isError) Bad else Line, shape)
+            .background(FieldFill)
+            .border(1.dp, if (isError) Bad else FieldEdge, shape)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
     ) {
         if (value.isEmpty()) {
-            Text(
-                placeholder,
-                color = Dim.copy(alpha = 0.55f),
-                fontSize = 16.sp,
-                fontFamily = family,
-                maxLines = 1
-            )
+            Text(placeholder, color = FieldHint, fontSize = 16.sp, fontFamily = family, maxLines = 1)
         }
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
             textStyle = TextStyle(color = Ink, fontSize = 16.sp, fontFamily = family),
-            cursorBrush = SolidColor(Accent),
+            cursorBrush = SolidColor(Color.White),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
             keyboardActions = KeyboardActions(onDone = { onImeAction() }),
             modifier = Modifier.fillMaxWidth()

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="96" alt="PortConnect logo">
+  <img src="assets/logo.png" width="112" alt="PortConnect logo">
 </p>
 
 <h1 align="center">PortConnect</h1>
@@ -20,14 +20,15 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshot.jpg" width="320" alt="PortConnect on a phone: the device address box and the list of services">
+  <img src="docs/preview.png" width="640" alt="Design preview of PortConnect: the device address box, the service tiles and the add box, shown as frosted glass">
 </p>
+<p align="center"><sub>Design preview. The app on your phone may differ slightly.</sub></p>
 
 ## What it does
 
-- Shows your services as large tiles, each with its port number.
+- Shows your services as frosted-glass tiles, each with its port number large on the right.
 - Opens a service at `http://<device address>:<port>` in an in-app web view, with back and reload buttons. If the page can't be reached, it shows the address it tried and a **Try again** button.
-- Remembers your device address. Type it into the **Device address** box and tap **Save**. The default is `192.168.100.4`. Leave the box empty to use the default.
+- Remembers your device address. Type it into the **Device address** box and tap **Save**. The default is `192.168.100.4`, shown in grey. Leave the box empty to use it.
 - Lets you add your own services and delete any of them, including the defaults.
 - Keeps your list and device address on the phone between launches.
 
@@ -39,14 +40,14 @@
 | Change the device address | Type it in **Device address** and tap **Save** |
 | Go back to the default address | Clear the box and tap **Save** |
 | Add a service | Enter a name and a port in **Add a service** (at the bottom of the list), then tap **Add** |
-| Delete a service | Swipe its tile to the left, far enough to turn the tile red |
+| Delete a service | Swipe its tile to the left, far enough that the red **Delete** shows |
 | Get the original list back | Delete everything, then tap **Restore defaults** |
 
 ## Default services
 
 | Name | Port |
 | --- | --- |
-| Blackbox Store | 1453 |
+| BlackBox Store | 1453 |
 | Orbit Store | 34177 |
 | Payload Manager | 8084 |
 | CheatRunner | 9999 |
@@ -69,6 +70,7 @@ app/src/main/java/com/example/portconnect/
   MainActivity.kt   app entry point and screen switching
   HomeScreen.kt     address box, service tiles, swipe to delete, add box
   WebScreen.kt      the in-app web view
+  Glass.kt          the frosted-glass look: wallpaper, panels, buttons
   Services.kt       service model, default list, saving
   Theme.kt          colours and theme
 ```
@@ -81,3 +83,4 @@ app/src/main/java/com/example/portconnect/
 
 - Pages are loaded over plain `http://`, because services on a local network don't normally have certificates.
 - The app only reaches devices your phone can already reach. It does no scanning and sends nothing anywhere else.
+- The glass look is drawn with translucent panels over a soft coloured wallpaper. It doesn't blur whatever is behind a panel.

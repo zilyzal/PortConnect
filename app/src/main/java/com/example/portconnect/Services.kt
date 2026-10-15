@@ -20,7 +20,7 @@ data class Service(
 }
 
 internal val DefaultServices = listOf(
-    Service(1, "Blackbox Store", 1453, 0),
+    Service(1, "BlackBox Store", 1453, 0),
     Service(2, "Orbit Store", 34177, 1),
     Service(3, "Payload Manager", 8084, 2),
     Service(4, "CheatRunner", 9999, 3),
