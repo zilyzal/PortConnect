@@ -22,7 +22,7 @@
 - Remembers your device address between launches. Type it into the **Device address** box and tap **Save**. The default is `192.168.100.4`, and leaving the box empty uses the default.
 - If a page can't be reached, it tells you which address it tried and offers **Try again**.
 
-## Services
+## Default services
 
 | Name | Port |
 | --- | --- |
@@ -32,7 +32,12 @@
 | CheatRunner | 9999 |
 | Ps5upload | 9120 |
 
-To add or change a service, edit the `targets` list in `app/src/main/java/com/example/portconnect/MainActivity.kt`.
+You can change this list inside the app:
+
+- **Add a service:** use the **Add a service** box at the bottom. Enter a name and a port number, then tap **Add**.
+- **Delete a service:** swipe it left or right. This works on the defaults too. If you delete them all, **Restore defaults** brings the originals back.
+
+Your list and device address are saved on the phone.
 
 ## Install
 
