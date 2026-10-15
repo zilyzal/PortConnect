@@ -15,7 +15,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,6 +37,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
@@ -46,9 +50,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -76,6 +83,9 @@ private val TileColors = listOf(
 // ---------- Model ----------
 
 private const val DEFAULT_HOST = "192.168.100.4"
+
+/** How far (as a share of the tile width) a tile must be swiped left before it is deleted. */
+private const val DELETE_SWIPE_FRACTION = 0.45f
 
 data class Service(
     val id: Long,
@@ -226,7 +236,7 @@ fun HomeScreen(
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { AddressPanel(host = host, onSave = onSaveHost) }
@@ -236,7 +246,7 @@ fun HomeScreen(
                     Text("Services", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     if (services.isNotEmpty()) {
                         Spacer(Modifier.height(2.dp))
-                        Text("Swipe a service sideways to delete it.", color = Dim, fontSize = 13.sp)
+                        Text("Swipe a service to the left to delete it.", color = Dim, fontSize = 13.sp)
                     }
                 }
             }
@@ -255,10 +265,8 @@ fun HomeScreen(
                 )
             }
 
-            item { Spacer(Modifier.height(8.dp)) }
+            item { AddBar(onAdd = onAdd) }
         }
-
-        AddBar(onAdd = onAdd)
     }
 }
 
@@ -390,7 +398,6 @@ fun AddressPanel(host: String, onSave: (String) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeRow(
     service: Service,
@@ -399,39 +406,55 @@ fun SwipeRow(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     val currentDelete by rememberUpdatedState(onDelete)
-    val state = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value != SwipeToDismissBoxValue.Settled) {
-                currentDelete()
-                true
-            } else {
-                false
-            }
-        }
-    )
 
-    SwipeToDismissBox(
-        state = state,
-        modifier = modifier,
-        backgroundContent = {
-            val direction = state.dismissDirection
-            if (direction != SwipeToDismissBoxValue.Settled) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Bad.copy(alpha = 0.9f))
-                        .padding(horizontal = 24.dp),
-                    contentAlignment = if (direction == SwipeToDismissBoxValue.StartToEnd)
-                        Alignment.CenterStart else Alignment.CenterEnd
-                ) {
-                    Text("Delete", color = Ground, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
+    Box(modifier = modifier.fillMaxWidth()) {
+        if (offsetX.value < 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Bad.copy(alpha = 0.9f))
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Text("Delete", color = Ground, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
-    ) {
-        ServiceTile(service = service, host = host, onClick = onOpen)
+
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                val width = size.width.toFloat()
+                                if (offsetX.value <= -width * DELETE_SWIPE_FRACTION) {
+                                    offsetX.animateTo(-width, tween(150))
+                                    currentDelete()
+                                } else {
+                                    offsetX.animateTo(0f, tween(150))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            scope.launch { offsetX.animateTo(0f, tween(150)) }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            val width = size.width.toFloat()
+                            scope.launch {
+                                offsetX.snapTo((offsetX.value + dragAmount).coerceIn(-width, 0f))
+                            }
+                        }
+                    )
+                }
+        ) {
+            ServiceTile(service = service, host = host, onClick = onOpen)
+        }
     }
 }
 
@@ -498,14 +521,14 @@ fun AddBar(onAdd: (String, Int) -> Unit) {
         }
     }
 
-    val topShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val shape = RoundedCornerShape(24.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(topShape)
+            .clip(shape)
             .background(Panel)
-            .border(1.dp, Line, topShape)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .border(1.dp, Line, shape)
+            .padding(18.dp)
     ) {
         Text("Add a service", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(10.dp))
@@ -549,11 +572,9 @@ fun AddBar(onAdd: (String, Int) -> Unit) {
             }
         }
 
-        Spacer(Modifier.height(8.dp))
         if (port.isNotEmpty() && !portValid) {
+            Spacer(Modifier.height(8.dp))
             Text("Port must be a number from 1 to 65535.", color = Bad, fontSize = 13.sp)
-        } else {
-            Text("Opens on the device address above.", color = Dim, fontSize = 13.sp)
         }
     }
 }

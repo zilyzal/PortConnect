@@ -35,7 +35,7 @@
 You can change this list inside the app:
 
 - **Add a service:** use the **Add a service** box at the bottom. Enter a name and a port number, then tap **Add**.
-- **Delete a service:** swipe it left or right. This works on the defaults too. If you delete them all, **Restore defaults** brings the originals back.
+- **Delete a service:** swipe it to the left. This works on the defaults too. If you delete them all, **Restore defaults** brings the originals back.
 
 Your list and device address are saved on the phone.
 
