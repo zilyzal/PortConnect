@@ -24,6 +24,8 @@
 </p>
 <p align="center"><sub>Design preview. The app on your phone may differ slightly.</sub></p>
 
+**New in 3.0:** a new glass UI and a new logo. See the [changelog](CHANGELOG.md) for everything that changed.
+
 ## What it does
 
 - Shows your services as frosted-glass tiles, each with its port number large on the right.

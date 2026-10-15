@@ -41,7 +41,11 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release delete "$TAG" --cleanup-tag --yes
           fi
+          # Release notes come from the matching section of CHANGELOG.md.
+          NOTES=$(awk -v v="$VERSION" '$0 ~ "^## " v "( |$)" {found=1; next} /^## / {found=0} found' CHANGELOG.md)
+          if [ -z "$NOTES" ]; then NOTES="PortConnect ${VERSION}"; fi
+          printf '%s\n\nDownload **PortConnect.apk** below and open it on your phone. The APK is signed with a debug key, so uninstall any older version first.\n' "$NOTES" > notes.md
           gh release create "$TAG" PortConnect.apk \
             --title "PortConnect ${VERSION}" \
-            --notes "Download **PortConnect.apk** below and open it on your phone. The APK is signed with a debug key, so uninstall any older version first." \
+            --notes-file notes.md \
             --latest
